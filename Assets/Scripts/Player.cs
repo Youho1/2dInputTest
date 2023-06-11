@@ -1,16 +1,27 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
-public class Player : MonoBehaviour
+public class Player : InputManager
 {
     Rigidbody2D rb;
     Animator animator;
-    [Header("Player Paramaters")]
-    [SerializeField] float runSpeed = 6f;
-    [SerializeField] float jumpForce = 6f;
-    [SerializeField, ReadOnly] Vector2 movement;
+    [Header("Player paramaters")]
+    [SerializeField] float runSpeed = 7f;
+    [SerializeField] float jumpForce = 15f;
+
+    [Header("Dash info")]
+    [SerializeField] private float dashSpeed;
+    [SerializeField] private float dashDuration;
+    [SerializeField, ReadOnly] private float dashTime;
+    [SerializeField, ReadOnly] private bool isDashing;
+    [SerializeField, ReadOnly] private bool isDashCoolTime;
+    [SerializeField, ReadOnly] private float dashCoolTimer;
+    [SerializeField] private float dashCoolTime;
+
+    [Header("Attack info")]
+    [SerializeField, ReadOnly] private bool isAttacking;
+
     private int facingDir;
     private bool facingRight = true;
 
@@ -18,48 +29,58 @@ public class Player : MonoBehaviour
     [SerializeField] private float groundCheckDistance;
     [SerializeField] private LayerMask whatIsGround;
     [SerializeField, ReadOnly] private bool isGrounded;
-    bool isMovementPressed;
-    bool isJumpPressed;
+
     private int isMovingHash;
-    PlayerInput input;
-    private void Awake()
+    protected override void Awake()
     {
-        input = new PlayerInput();
+        base.Awake();
         rb = GetComponent<Rigidbody2D>();
         animator = GetComponentInChildren<Animator>();
         isMovingHash = Animator.StringToHash("isMoving");
-        input.CharacterControls.Movement.performed += onMovement;
-        input.CharacterControls.Jump.started += onJump;
-        input.CharacterControls.Jump.canceled += onJump;
     }
     private void Update()
-    {          
+    {
         handleMovement();
-        isGrounded = Physics2D.Raycast(transform.position, Vector2.down, groundCheckDistance, whatIsGround);
-        handleAnimation();
+        GroundCheck();
+        handleAnimations();
         toJump();
-        
         FlipController();
+        DashController();
     }
 
-    void onJump(InputAction.CallbackContext context)
+    private void DashController()
     {
-        isJumpPressed = context.ReadValueAsButton();
+        if (isDashPressed && movement.x != 0 && !isDashCoolTime)
+        {
+            dashTime = dashDuration;
+            dashCoolTimer = dashCoolTime;
+        }
+
+        dashTime -= Time.deltaTime;
+        dashCoolTimer -= Time.deltaTime;
+        isDashing = dashTime > 0 ? true : false;
+        isDashCoolTime = dashCoolTimer > 0 ? true : false;
     }
-    void onMovement(InputAction.CallbackContext context)
+
+    private void GroundCheck()
     {
-
-        movement.x = context.ReadValue<float>() * runSpeed;
-        isMovementPressed = movement.x != 0;
+        isGrounded = Physics2D.Raycast(transform.position, Vector2.down, groundCheckDistance, whatIsGround);
     }
 
-    void handleMovement()
+
+    private void handleMovement()
     {
-        rb.velocity = new Vector2(movement.x, rb.velocity.y);
+        if (isDashing && movement.x != 0)
+        {
+            rb.velocity = new Vector2(movement.x * dashSpeed, 0);
+        }
+        else
+        {
+            rb.velocity = new Vector2(movement.x * runSpeed, rb.velocity.y);
+        }
     }
 
-
-    void toJump()
+    private void toJump()
     {
         if (isJumpPressed && isGrounded)
         {
@@ -67,7 +88,7 @@ public class Player : MonoBehaviour
         }
     }
 
-    private void handleAnimation()
+    private void handleAnimations()
     {
         bool isMoving = animator.GetBool(isMovingHash);
         if (isMovementPressed && !isMoving)
@@ -80,16 +101,7 @@ public class Player : MonoBehaviour
         }
         animator.SetBool("isGrounded", isGrounded);
         animator.SetFloat("yVelocity", rb.velocity.y);
-    }
-
-    private void OnEnable()
-    {
-        input.CharacterControls.Enable();
-    }
-
-    private void OnDisable()
-    {
-        input.CharacterControls.Disable();
+        animator.SetBool("isDashing", isDashing);
     }
 
     private void Flip()
