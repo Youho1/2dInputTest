@@ -3,21 +3,20 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class InputManager : MonoBehaviour
+public class InputManager : MonoBehaviour 
 {
     private PlayerInput input;
     [Header("Button Check")]
-    [SerializeField, ReadOnly] protected bool isAttackPressed;
-    [SerializeField, ReadOnly] protected bool isMovementPressed;
-    [SerializeField, ReadOnly] protected bool isJumpPressed;
-    [SerializeField, ReadOnly] protected bool isDashPressed;
-
-    [SerializeField, ReadOnly] protected Vector2 movement;
+    [SerializeField, ReadOnly] public bool isAttackPressed;
+    [SerializeField, ReadOnly] public bool isMovementPressed;
+    [SerializeField, ReadOnly] public bool isJumpPressed;
+    [SerializeField, ReadOnly] public bool isDashPressed;
+    private Player player;
 
     protected virtual void Awake()
     {
         input = new PlayerInput();
-
+        player = GetComponent<Player>();
         input.CharacterControls.Movement.performed += onMovement;
         input.CharacterControls.Jump.started += onJump;
         input.CharacterControls.Jump.canceled += onJump;
@@ -41,8 +40,8 @@ public class InputManager : MonoBehaviour
     }
     protected void onMovement(InputAction.CallbackContext context)
     {
-        movement.x = context.ReadValue<float>();
-        isMovementPressed = movement.x != 0;
+        player.movement.x = context.ReadValue<float>();
+        isMovementPressed = player.movement.x != 0;
     }
 
     protected virtual void OnEnable()

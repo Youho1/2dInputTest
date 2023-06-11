@@ -2,13 +2,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Player : InputManager
+public class Player : Entity
 {
-    Rigidbody2D rb;
-    Animator animator;
     [Header("Player paramaters")]
     [SerializeField] float runSpeed = 7f;
     [SerializeField] float jumpForce = 15f;
+    [SerializeField, ReadOnly] public Vector2 movement;
 
     [Header("Dash info")]
     [SerializeField] private float dashSpeed;
@@ -19,38 +18,31 @@ public class Player : InputManager
     [SerializeField, ReadOnly] private float dashCoolTimer;
     [SerializeField] private float dashCoolTime;
 
-    [Header("Attack info")]
-    [SerializeField, ReadOnly] private bool isAttacking;
-
-    private int facingDir;
-    private bool facingRight = true;
-
-    [Header("Collision info")]
-    [SerializeField] private float groundCheckDistance;
-    [SerializeField] private LayerMask whatIsGround;
-    [SerializeField, ReadOnly] private bool isGrounded;
-
-    private int isMovingHash;
+    private InputManager input;
     protected override void Awake()
     {
         base.Awake();
-        rb = GetComponent<Rigidbody2D>();
-        animator = GetComponentInChildren<Animator>();
-        isMovingHash = Animator.StringToHash("isMoving");
+        input = GetComponent<InputManager>();
     }
-    private void Update()
+
+    protected override void Update()
     {
-        handleMovement();
-        GroundCheck();
-        handleAnimations();
+        base.Update();
         toJump();
-        FlipController();
         DashController();
+    }
+    protected override void handleAttack()
+    {
+        if (input.isAttackPressed && !isAttacking && isGrounded && !isDashing)
+        {
+            animator.SetTrigger("Attack");
+            isAttacking = true;
+        }
     }
 
     private void DashController()
     {
-        if (isDashPressed && movement.x != 0 && !isDashCoolTime)
+        if (input.isDashPressed && !isDashCoolTime && !isAttacking)
         {
             dashTime = dashDuration;
             dashCoolTimer = dashCoolTime;
@@ -62,17 +54,15 @@ public class Player : InputManager
         isDashCoolTime = dashCoolTimer > 0 ? true : false;
     }
 
-    private void GroundCheck()
+    protected override void handleMovement()
     {
-        isGrounded = Physics2D.Raycast(transform.position, Vector2.down, groundCheckDistance, whatIsGround);
-    }
-
-
-    private void handleMovement()
-    {
-        if (isDashing && movement.x != 0)
+        if (isAttacking)
         {
-            rb.velocity = new Vector2(movement.x * dashSpeed, 0);
+            rb.velocity = Vector2.zero;
+        }
+        else if (isDashing)
+        {
+            rb.velocity = new Vector2(facingDir * dashSpeed, 0);
         }
         else
         {
@@ -82,20 +72,21 @@ public class Player : InputManager
 
     private void toJump()
     {
-        if (isJumpPressed && isGrounded)
+        if (isAttacking) return;
+        if (input.isJumpPressed && isGrounded)
         {
             rb.velocity = new Vector2(rb.velocity.x, jumpForce);
         }
     }
 
-    private void handleAnimations()
+    protected override void handleAnimations()
     {
         bool isMoving = animator.GetBool(isMovingHash);
-        if (isMovementPressed && !isMoving)
+        if (input.isMovementPressed && !isMoving)
         {
             animator.SetBool(isMovingHash, true);
         }
-        else if (!isMovementPressed && isMoving)
+        else if (!input.isMovementPressed && isMoving)
         {
             animator.SetBool(isMovingHash, false);
         }
@@ -103,15 +94,7 @@ public class Player : InputManager
         animator.SetFloat("yVelocity", rb.velocity.y);
         animator.SetBool("isDashing", isDashing);
     }
-
-    private void Flip()
-    {
-        facingDir *= -1;
-        facingRight = !facingRight;
-        transform.Rotate(0, 180, 0);
-    }
-
-    private void FlipController()
+    protected override void FlipController()
     {
         if (rb.velocity.x > 0 && !facingRight)
         {
@@ -121,10 +104,5 @@ public class Player : InputManager
         {
             Flip();
         }
-    }
-
-    private void OnDrawGizmos()
-    {
-        Gizmos.DrawLine(transform.position, new Vector3(transform.position.x, transform.position.y - groundCheckDistance));
     }
 }
