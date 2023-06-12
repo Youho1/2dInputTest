@@ -30,7 +30,7 @@ public abstract class Entity : MonoBehaviour
     {
         handleMovement();
         handleAttack();
-        GroundCheck();
+        CollisionChecks();
         handleAnimations();
         FlipController();
     }
@@ -52,7 +52,7 @@ public abstract class Entity : MonoBehaviour
         isAttacking = false;
     }
     // ground check
-    protected virtual void GroundCheck()
+    protected virtual void CollisionChecks()
     {
         isGrounded = Physics2D.Raycast(groundCheck.position,Vector2.down, groundCheckDistance, whatIsGround);
     }
